@@ -106,7 +106,7 @@
                 <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                     <i class="fas fa-search"></i>
                 </span>
-                <input type="text" id="searchInput" placeholder="Buscar produto ou SKU..." 
+                <input type="text" id="searchInput" placeholder="Buscar por Referência ou Nome..." 
                     class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition-shadow">
             </div>
             
@@ -131,8 +131,8 @@
             <thead>
                 <tr class="text-xs font-semibold tracking-wide text-gray-500 uppercase border-b border-gray-200">
                     <th class="px-4 py-3 w-24 text-center">Img</th>
-                    <th class="px-4 py-3 w-64">Produto / SKU</th>
-                    <!-- Estoque removido -->
+                    <th class="px-4 py-3 w-72">Referência / Produto</th>
+                    <!-- Estoque Removido -->
                     <th class="px-4 py-3 w-28 text-right bg-blue-50 text-blue-800 border-l border-blue-100">
                         Preço Site (Venda)
                     </th>
@@ -327,7 +327,8 @@
                                 brand: prod.brand || "Outros", // Garante que tenha marca
                                 price_site: parseFloat(prod.price.replace(",", ".")) || 0,
                                 image: prod.ProductImage?.[0]?.thumbs?.["90"]?.https || prod.ProductImage?.[0]?.https || "https://placehold.co/40",
-                                sku: prod.id 
+                                // Pega 'reference' (SKU) diretamente. Se não vier, fica vazio.
+                                sku: prod.reference || "" 
                             };
                         }));
                     }
@@ -397,7 +398,7 @@
             const selectedBrand = document.getElementById('brandFilter').value;
 
             const filtered = allProducts.filter(p => {
-                const matchesTerm = p.name.toLowerCase().includes(term) || String(p.id).includes(term);
+                const matchesTerm = p.name.toLowerCase().includes(term) || String(p.sku).toLowerCase().includes(term);
                 const matchesBrand = selectedBrand === "" || p.brand === selectedBrand;
                 return matchesTerm && matchesBrand;
             });
@@ -435,10 +436,16 @@
                         <img src="${product.image}" class="w-16 h-16 object-cover rounded shadow-sm border border-gray-200 mx-auto" onerror="this.src='https://placehold.co/64'">
                     </td>
                     <td class="px-4 py-2">
-                        <div class="font-medium text-gray-900 line-clamp-1" title="${product.name}">${product.name}</div>
-                        <div class="text-xs text-gray-500 flex gap-2 mt-1">
-                            <span class="bg-gray-100 px-1.5 py-0.5 rounded">ID: ${product.id}</span>
-                            <span class="bg-gray-100 px-1.5 py-0.5 rounded text-blue-800 font-semibold">${product.brand}</span>
+                        <!-- SKU (REFERÊNCIA) EM DESTAQUE - Somente Reference -->
+                        <div class="text-sm font-bold text-gray-800 mb-1">
+                            ${product.sku ? `<span class="bg-gray-200 px-2 py-0.5 rounded text-gray-700">${product.sku}</span>` : '<span class="text-red-400 text-xs italic">Sem Ref</span>'}
+                        </div>
+                        <!-- NOME EM BAIXO -->
+                        <div class="font-medium text-gray-600 line-clamp-2 leading-tight text-xs" title="${product.name}">${product.name}</div>
+                        
+                        <div class="text-xs text-gray-500 flex gap-2 mt-2">
+                            <!-- ID removido completamente da view -->
+                            <span class="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-semibold text-[10px] uppercase tracking-wider">${product.brand}</span>
                         </div>
                     </td>
                     <td class="px-4 py-2 text-right font-medium text-gray-600 bg-blue-50/30">
