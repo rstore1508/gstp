@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gestor de Preços - USE RELÓGIO</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        .spreadsheet-table th {
+            position: sticky;
+            top: 0;
+            background-color: #ffffff;
+            z-index: 20;
+            box-shadow: 0 1px 0px rgba(0,0,0,0.1);
+        }
+
+        .input-cell {
+            transition: all 0.1s;
+            border: 1px solid transparent;
+        }
+
+        .input-cell:focus {
+            background-color: #fff;
+            border-color: #2563eb;
+            box-shadow: inset 0 0 0 1px #2563eb;
+            outline: none;
+            z-index: 5;
+        }
+
+        tr.active-row td {
+            background-color: #f0f7ff;
+        }
+
+        /* Barra de scroll personalizada */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        .priority-skmei {
+            border-left: 6px solid #2563eb;
+            background-color: #f8faff !important;
+        }
+
+        .skmei-badge {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 800;
+            font-size: 10px;
+            text-transform: uppercase;
+            box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+        }
+
+        /* Efeito de zoom na foto ao passar o rato */
+        .product-img-container img {
+            transition: transform 0.2s ease-in-out;
+        }
+        .product-img-container:hover img {
+            transform: scale(1.5);
+            z-index: 50;
+            position: relative;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Cabeçalho Otimizado -->
+    <header class="bg-white border-b border-gray-200 px-6 py-2 flex flex-col lg:flex-row justify-between items-center shadow-sm z-30 gap-4">
+        <div class="flex items-center gap-3 w-full lg:w-auto">
+            <div class="bg-black text-white p-2 rounded-lg shadow-lg">
+                <i class="fas fa-clock text-lg"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-black text-gray-900 tracking-tighter leading-none">USE RELÓGIO</h1>
+                <p class="text-[9px] uppercase tracking-[0.2em] text-blue-600 font-bold">Gestão de Estoque & Preço</p>
+            </div>
+        </div>
+
+        <!-- Barra de Ferramentas -->
+        <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto flex-1 max-w-5xl">
+            
+            <div class="relative flex-1 min-w-[200px]">
+                <input type="text" id="searchInput" placeholder="Ref ou Nome..." 
+                    class="w-full pl-4 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm transition-all bg-gray-50 focus:bg-white font-medium">
+            </div>
+
+            <button id="btnOnlySkmei" class="px-4 py-2 bg-blue-600 text-white text-xs font-black rounded-lg border border-blue-700 hover:bg-blue-700 transition-all shadow-sm">
+                FOCAR SKMEI
+            </button>
+
+            <div class="flex items-center bg-gray-50 px-3 py-1 rounded-lg border border-gray-200">
+                <i class="fas fa-tag text-gray-400 text-xs mr-2"></i>
+                <select id="brandFilter" class="bg-transparent py-1 text-xs font-bold text-gray-700 focus:outline-none cursor-pointer">
+                    <option value="">Todas as Marcas</option>
+                </select>
+            </div>
+
+            <div class="flex items-center bg-gray-50 px-3 py-1 rounded-lg border border-gray-200">
+                <span class="text-gray-400 text-xs font-bold mr-2">ATÉ R$</span>
+                <input type="number" id="priceMax" placeholder="999" class="w-16 bg-transparent font-black text-blue-700 text-xs focus:outline-none">
+            </div>
+
+            <button id="resetFilters" class="p-2 text-gray-400 hover:text-red-500 transition-colors" title="Limpar Tudo">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+        </div>
+
+        <div class="hidden lg:flex items-center gap-4 pl-4 border-l border-gray-100">
+            <div class="text-right">
+                <span id="totalProducts" class="block text-xl font-black text-gray-900">0</span>
+                <span class="text-[9px] uppercase text-gray-400 font-black">Produtos</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Tabela Principal -->
+    <main class="flex-1 overflow-auto bg-gray-50 relative p-2">
+        
+        <div id="loadingOverlay" class="absolute inset-0 bg-white/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center transition-opacity duration-300">
+            <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p class="text-gray-900 font-black tracking-tight italic">SINCRO USE RELÓGIO...</p>
+            <p id="loadingProgress" class="text-[10px] text-gray-400 mt-1 uppercase font-bold"></p>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <table class="w-full text-left border-collapse spreadsheet-table" id="mainTable">
+                <thead>
+                    <tr class="text-[10px] font-black tracking-widest text-gray-400 uppercase border-b border-gray-100">
+                        <th class="px-4 py-3 w-32 text-center italic">Foto</th>
+                        <th class="px-4 py-3">Produto / Referência</th>
+                        <th class="px-4 py-3 w-36 text-right bg-blue-50/30 text-blue-800">Privalia / Renner</th>
+                        <th class="px-4 py-3 w-32 bg-yellow-50/30 text-yellow-800">Custo (R$)</th>
+                        <th class="px-4 py-3 w-32 bg-green-50/30 text-green-800">Use Relógio</th>
+                        <th class="px-4 py-3 w-20 text-center">Margem</th>
+                        <th class="px-4 py-3 w-10"></th>
+                    </tr>
+                </thead>
+                <tbody id="productsTableBody" class="text-sm divide-y divide-gray-50">
+                    <!-- Inserido via JS -->
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
+        import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+        import { getFirestore, collection, doc, setDoc, getDocs, query } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyC6zxM7RTN9F9c1iTNV6sWgGu8U3DA_Nnk",
+            authDomain: "gestaodeprec.firebaseapp.com",
+            projectId: "gestaodeprec",
+            storageBucket: "gestaodeprec.firebasestorage.app",
+            messagingSenderId: "809679933688",
+            appId: "1:809679933688:web:2a90f86e6f4cd53392ab0d"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = 'loja-relogio-store';
+
+        let allProducts = []; 
+        let pricingData = {}; 
+
+        const FILTER_KEY = 'userelogio_filters_v2';
+        let filterState = JSON.parse(localStorage.getItem(FILTER_KEY)) || { search: '', brand: '', priceMax: '' };
+
+        async function init() {
+            try {
+                await signInAnonymously(auth);
+                document.getElementById('searchInput').value = filterState.search;
+                document.getElementById('priceMax').value = filterState.priceMax;
+            } catch (error) { console.error(error); }
+        }
+
+        onAuthStateChanged(auth, async (user) => { if (user) await loadData(); });
+
+        async function loadData() {
+            try {
+                const loadingProgress = document.getElementById('loadingProgress');
+                
+                loadingProgress.innerText = "Lendo Firebase...";
+                const dbPrices = await fetchPricingData();
+                pricingData = dbPrices;
+
+                loadingProgress.innerText = "Sincronizando Tray...";
+                const apiProds = await fetchAPIProducts();
+
+                const mergedProducts = [...apiProds];
+                const apiIds = new Set(apiProds.map(p => String(p.id)));
+
+                Object.keys(pricingData).forEach(id => {
+                    if (!apiIds.has(id) && pricingData[id].name) {
+                        mergedProducts.push({
+                            id: id,
+                            sku: pricingData[id].sku || 'N/A',
+                            name: pricingData[id].name,
+                            brand: pricingData[id].brand || 'Outros',
+                            price_site: pricingData[id].price_site || 0,
+                            image: pricingData[id].image || 'https://placehold.co/200',
+                            isOffline: true
+                        });
+                    }
+                });
+
+                allProducts = mergedProducts;
+                populateBrands(allProducts);
+                applyFilters();
+                
+                document.getElementById('loadingOverlay').classList.add('opacity-0');
+                setTimeout(() => document.getElementById('loadingOverlay').classList.add('hidden'), 300);
+            } catch (e) { console.error(e); }
+        }
+
+        async function fetchPricingData() {
+            const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'pricing_data'));
+            const querySnapshot = await getDocs(q);
+            const data = {};
+            querySnapshot.forEach((doc) => data[doc.id] = doc.data());
+            return data;
+        }
+
+        async function fetchAPIProducts() {
+            const products = [];
+            let page = 1;
+            let totalPages = 1;
+            try {
+                while (page <= totalPages) {
+                    const res = await fetch(`https://www.shopdorelogio.com.br/web_api/products?page=${page}&limit=50`);
+                    if (!res.ok) break;
+                    const data = await res.json();
+                    if (!data.Products) break;
+                    data.Products.forEach(p => {
+                        const prod = p.Product;
+                        products.push({
+                            id: String(prod.id),
+                            sku: prod.reference || (prod.name.match(/\b(TG[I]?\s*\d+)\b/i)?.[0]?.replace(/\s/g, '') || 'N/A'),
+                            name: prod.name,
+                            brand: prod.brand || 'Outros',
+                            price_site: parseFloat(prod.price.replace(',', '.')) || 0,
+                            image: prod.ProductImage?.[0]?.thumbs?.["180"]?.https || prod.ProductImage?.[0]?.https || 'https://placehold.co/200',
+                            isOffline: false
+                        });
+                    });
+                    totalPages = data.paging ? Math.ceil(data.paging.total / data.paging.limit) : 1;
+                    page++;
+                    if(page > 15) break; 
+                }
+            } catch (e) { console.warn("API Offline"); }
+            return products;
+        }
+
+        function populateBrands(products) {
+            const select = document.getElementById('brandFilter');
+            const uniqueBrands = [...new Set(products.map(p => p.brand).filter(Boolean))].sort();
+            const priority = ['Skmei', 'Onix', 'Tuguir'];
+            const sorted = [
+                ...priority.filter(b => uniqueBrands.some(ub => ub.toLowerCase() === b.toLowerCase())), 
+                ...uniqueBrands.filter(b => !priority.some(pb => pb.toLowerCase() === b.toLowerCase()))
+            ];
+
+            select.innerHTML = '<option value="">Todas as Marcas</option>';
+            sorted.forEach(brand => {
+                const opt = document.createElement('option');
+                opt.value = brand;
+                opt.innerText = brand;
+                if (brand.toLowerCase() === 'skmei') opt.classList.add('text-blue-600', 'font-black');
+                select.appendChild(opt);
+            });
+            select.value = filterState.brand;
+        }
+
+        function applyFilters() {
+            const term = document.getElementById('searchInput').value.toLowerCase();
+            const brandFilter = document.getElementById('brandFilter').value.toLowerCase();
+            const maxP = parseFloat(document.getElementById('priceMax').value) || Infinity;
+
+            let filtered = allProducts.filter(p => {
+                const pName = (p.name || "").toLowerCase();
+                const pSku = (p.sku || "").toLowerCase();
+                const pBrand = (p.brand || "").toLowerCase();
+
+                const matchTerm = pName.includes(term) || pSku.includes(term);
+                const matchBrand = !brandFilter || pBrand === brandFilter;
+                const matchPrice = p.price_site <= maxP;
+                return matchTerm && matchBrand && matchPrice;
+            });
+
+            filtered.sort((a, b) => {
+                const brandA = (a.brand || "").toLowerCase();
+                const brandB = (b.brand || "").toLowerCase();
+                if (brandA === 'skmei' && brandB !== 'skmei') return -1;
+                if (brandA !== 'skmei' && brandB === 'skmei') return 1;
+                return 0;
+            });
+
+            filterState = { search: term, brand: document.getElementById('brandFilter').value, priceMax: document.getElementById('priceMax').value };
+            localStorage.setItem(FILTER_KEY, JSON.stringify(filterState));
+
+            renderTable(filtered);
+            document.getElementById('totalProducts').innerText = filtered.length;
+        }
+
+        function renderTable(products) {
+            const tbody = document.getElementById('productsTableBody');
+            tbody.innerHTML = '';
+
+            products.forEach(product => {
+                const stored = pricingData[product.id] || {};
+                const margin = calculateMargin(product.price_site, stored.cost || 0);
+                const isSkmei = product.brand && product.brand.toLowerCase() === 'skmei';
+
+                const tr = document.createElement('tr');
+                tr.className = `group hover:bg-gray-50/50 transition-colors ${isSkmei ? 'priority-skmei' : ''}`;
+                tr.innerHTML = `
+                    <td class="px-4 py-4 text-center">
+                        <div class="product-img-container w-28 h-28 mx-auto flex items-center justify-center bg-gray-50 rounded-lg overflow-visible border border-gray-100 shadow-sm">
+                            <img src="${product.image}" class="max-w-full max-h-full object-contain rounded" onerror="this.src='https://placehold.co/200'">
+                        </div>
+                    </td>
+                    <td class="px-4 py-4">
+                        <div class="flex items-center gap-2 mb-1.5">
+                            <span class="bg-gray-100 px-2 py-0.5 rounded text-[10px] font-black text-gray-600 uppercase border border-gray-200">${product.sku}</span>
+                            ${isSkmei ? '<span class="skmei-badge">SKMEI</span>' : `<span class="text-[10px] font-bold text-gray-400 uppercase">${product.brand}</span>`}
+                        </div>
+                        <div class="font-bold text-gray-900 text-sm leading-tight max-w-[400px]" title="${product.name}">${product.name}</div>
+                    </td>
+                    <td class="px-4 py-4 text-right font-black text-gray-900 bg-blue-50/10 text-base">
+                        R$ ${formatMoney(product.price_site)}
+                    </td>
+                    <td class="p-0 bg-yellow-50/5">
+                        <input type="number" step="0.01" value="${stored.cost || ''}" data-field="cost" data-id="${product.id}"
+                            class="input-cell w-full h-full px-4 py-4 bg-transparent text-right font-bold text-gray-800 text-sm" placeholder="0,00">
+                    </td>
+                    <td class="p-0 bg-green-50/5">
+                        <input type="number" step="0.01" value="${stored.useRelogio || ''}" data-field="useRelogio" data-id="${product.id}"
+                            class="input-cell w-full h-full px-4 py-4 bg-transparent text-right font-bold text-gray-800 text-sm" placeholder="0,00">
+                    </td>
+                    <td class="px-4 py-4 text-center">
+                        <div class="text-[11px] font-black px-3 py-1 rounded-full ${getMarginColor(margin)} shadow-sm inline-block">
+                            ${margin}%
+                        </div>
+                    </td>
+                    <td class="px-2 py-4 text-center">
+                        <i class="fas fa-check text-green-500 opacity-0 transition-opacity save-status text-sm"></i>
+                    </td>
+                `;
+
+                tr.querySelectorAll('input').forEach(input => {
+                    input.addEventListener('change', e => handleSave(e, product));
+                    input.addEventListener('focus', e => {
+                        document.querySelectorAll('tr').forEach(r => r.classList.remove('active-row'));
+                        tr.classList.add('active-row');
+                        e.target.select();
+                    });
+                    input.addEventListener('keydown', handleNav);
+                });
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function handleSave(e, product) {
+            const input = e.target;
+            const { field, id } = input.dataset;
+            const val = parseFloat(input.value) || 0;
+            const check = input.closest('tr').querySelector('.save-status');
+
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'pricing_data', id);
+                const payload = { 
+                    [field]: val, 
+                    updatedAt: new Date().toISOString(),
+                    name: product.name, sku: product.sku, image: product.image, brand: product.brand, price_site: product.price_site
+                };
+                await setDoc(docRef, payload, { merge: true });
+                pricingData[id] = { ...pricingData[id], ...payload };
+
+                check.classList.replace('opacity-0', 'opacity-100');
+                setTimeout(() => check.classList.replace('opacity-100', 'opacity-0'), 1500);
+            } catch (err) { console.error(err); }
+        }
+
+        function handleNav(e) {
+            if (['ArrowUp', 'ArrowDown', 'Enter'].includes(e.key)) {
+                e.preventDefault();
+                const row = e.target.closest('tr');
+                const field = e.target.dataset.field;
+                const targetRow = e.key === 'ArrowUp' ? row.previousElementSibling : row.nextElementSibling;
+                if (targetRow) targetRow.querySelector(`input[data-field="${field}"]`)?.focus();
+                else if (e.key === 'Enter') e.target.blur();
+            }
+        }
+
+        function formatMoney(v) { return v.toFixed(2).replace('.', ','); }
+        function calculateMargin(s, c) { return s > 0 ? Math.round(((s - c) / s) * 100) : 0; }
+        function getMarginColor(m) {
+            if (m <= 0) return 'text-gray-400 bg-gray-100';
+            if (m < 20) return 'bg-red-100 text-red-600';
+            if (m < 40) return 'bg-orange-100 text-orange-600';
+            return 'bg-green-100 text-green-600';
+        }
+
+        document.getElementById('searchInput').addEventListener('input', applyFilters);
+        document.getElementById('brandFilter').addEventListener('change', applyFilters);
+        document.getElementById('priceMax').addEventListener('input', applyFilters);
+        document.getElementById('btnOnlySkmei').addEventListener('click', () => {
+            const currentFilter = document.getElementById('brandFilter').value;
+            if (currentFilter.toLowerCase() === 'skmei') {
+                document.getElementById('brandFilter').value = '';
+            } else {
+                document.getElementById('brandFilter').value = 'Skmei';
+            }
+            applyFilters();
+        });
+        document.getElementById('resetFilters').addEventListener('click', () => {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('brandFilter').value = '';
+            document.getElementById('priceMax').value = '';
+            applyFilters();
+            Toastify({ text: "Filtros Resetados", style: { background: "#64748b" } }).showToast();
+        });
+
+        init();
+    </script>
+</body>
+</html>
